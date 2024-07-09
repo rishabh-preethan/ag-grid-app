@@ -3,8 +3,6 @@
   import 'ag-grid-community/styles/ag-grid.css';
   import 'ag-grid-community/styles/ag-theme-alpine.css';
   import { Grid } from 'ag-grid-community';
-  import Papa from 'papaparse';
-  import * as XLSX from 'xlsx';
 
   let gridDiv;
   let fileInput;
@@ -24,7 +22,7 @@
 
   function highlightRenderer(params) {
     const value = params.value;
-    const threshold = 15; // Customize this value as needed
+    const threshold = 15;
     let color = 'black';
 
     if (value > threshold) {
@@ -36,62 +34,34 @@
     return `<span style="color: ${color};">${value}</span>`;
   }
 
-  function handleFileUpload(event) {
+  async function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    const fileExtension = file.name.split('.').pop();
+    const formData = new FormData();
+    formData.append('file', file);
 
-    reader.onload = (e) => {
-      const data = e.target.result;
-      if (fileExtension === 'csv') {
-        Papa.parse(data, {
-          header: true,
-          complete: (results) => {
-            const { meta, data } = results;
-            gridOptions.columnDefs = meta.fields.map(field => ({
-              headerName: field.charAt(0).toUpperCase() + field.slice(1),
-              field: field,
-              sortable: true,
-              filter: true,
-              editable: true,
-              cellRenderer: field === 'value' || field === 'calculatedValue' ? 'highlightRenderer' : null
-            }));
-            gridOptions.rowData = data;
-            reinitializeGrid();
-          }
-        });
-      } else if (fileExtension === 'xlsx') {
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        const headers = jsonData[0];
-        const rowData = jsonData.slice(1).map(row => {
-          let rowData = {};
-          row.forEach((cell, i) => {
-            rowData[headers[i]] = cell;
-          });
-          return rowData;
-        });
-        gridOptions.columnDefs = headers.map(header => ({
-          headerName: header.charAt(0).toUpperCase() + header.slice(1),
-          field: header,
-          sortable: true,
-          filter: true,
-          editable: true,
-          cellRenderer: header === 'value' || header === 'calculatedValue' ? 'highlightRenderer' : null
-        }));
-        gridOptions.rowData = rowData;
-        reinitializeGrid();
+    try {
+      const response = await fetch('http://localhost:5000/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('File upload failed');
       }
-    };
 
-    if (fileExtension === 'csv') {
-      reader.readAsText(file);
-    } else if (fileExtension === 'xlsx') {
-      reader.readAsBinaryString(file);
+      const { columns, data } = await response.json();
+
+      console.log("Columns received:", columns);  // Debug print
+      console.log("Data received:", data);  // Debug print
+
+      gridOptions.columnDefs = columns;
+      gridOptions.rowData = data;
+      reinitializeGrid();
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      // Handle error appropriately
     }
   }
 

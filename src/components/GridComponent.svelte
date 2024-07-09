@@ -3,36 +3,24 @@
   import 'ag-grid-community/styles/ag-grid.css';
   import 'ag-grid-community/styles/ag-theme-alpine.css';
   import { Grid } from 'ag-grid-community';
+  import FilterComponent from './FilterComponent.svelte';
 
   let gridDiv;
   let fileInput;
+  let rawData = [];
+  let gridData = [];
+  let columnDefs = [];
+  let showTable = false;
 
   let gridOptions = {
     columnDefs: [],
     rowData: [],
-    frameworkComponents: {
-      highlightRenderer
-    },
     defaultColDef: {
       sortable: true,
       filter: true,
       editable: true
     }
   };
-
-  function highlightRenderer(params) {
-    const value = params.value;
-    const threshold = 15;
-    let color = 'black';
-
-    if (value > threshold) {
-      color = 'green';
-    } else if (value < threshold) {
-      color = 'red';
-    }
-
-    return `<span style="color: ${color};">${value}</span>`;
-  }
 
   async function handleFileUpload(event) {
     const file = event.target.files[0];
@@ -53,23 +41,32 @@
 
       const { columns, data } = await response.json();
 
-      console.log("Columns received:", columns);  // Debug print
-      console.log("Data received:", data);  // Debug print
-
-      gridOptions.columnDefs = columns;
-      gridOptions.rowData = data;
-      reinitializeGrid();
+      columnDefs = columns;
+      rawData = data;
+      showTable = false;  // Hide table initially
     } catch (error) {
       console.error('Error uploading file:', error);
-      // Handle error appropriately
     }
+  }
+
+  function handleFilterData(event) {
+    gridData = event.detail.data;
+    showTable = true;
+    reinitializeGrid();
   }
 
   function reinitializeGrid() {
     if (gridOptions.api) {
       gridOptions.api.destroy();
     }
-    new Grid(gridDiv, gridOptions);
+
+    gridOptions.columnDefs = columnDefs;
+    gridOptions.rowData = gridData;
+
+    // Ensure gridDiv is available before initializing Grid
+    if (gridDiv) {
+      new Grid(gridDiv, gridOptions);
+    }
   }
 
   onMount(() => {
@@ -89,5 +86,10 @@
 
 <div>
   <input type="file" bind:this={fileInput} accept=".csv, .xlsx" on:change={handleFileUpload} />
-  <div bind:this={gridDiv} class="ag-theme-alpine"></div>
+  {#if rawData.length > 0}
+    <FilterComponent data={rawData} on:filterData={handleFilterData} />
+  {/if}
+  {#if showTable}
+    <div bind:this={gridDiv} class="ag-theme-alpine"></div>
+  {/if}
 </div>

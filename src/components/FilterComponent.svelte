@@ -52,15 +52,19 @@
     }
   
     function applyFilter() {
-      let filteredData = [];
-      if (selectedCriteria === 'above') {
-        filteredData = data.filter(row => Object.values(row).some(value => value > selectedValue));
-      } else if (selectedCriteria === 'below') {
-        filteredData = data.filter(row => Object.values(row).some(value => value < selectedValue));
-      } else if (selectedCriteria === 'equal') {
-        filteredData = data.filter(row => Object.values(row).some(value => value >= selectedValue.min && value <= selectedValue.max));
-      }
-      dispatch('filterData', { data: filteredData });
+      const markedData = data.map(row => {
+        let meetsCriteria = false;
+        if (selectedCriteria === 'above') {
+          meetsCriteria = Object.values(row).some(value => value > selectedValue);
+        } else if (selectedCriteria === 'below') {
+          meetsCriteria = Object.values(row).some(value => value < selectedValue);
+        } else if (selectedCriteria === 'equal') {
+          meetsCriteria = Object.values(row).some(value => value >= selectedValue.min && value <= selectedValue.max);
+        }
+        return { ...row, meetsCriteria };
+      });
+  
+      dispatch('filterData', { data: markedData });
     }
   </script>
   

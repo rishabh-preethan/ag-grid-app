@@ -18,7 +18,13 @@
     defaultColDef: {
       sortable: true,
       filter: true,
-      editable: true
+      editable: true,
+      cellStyle: params => {
+        if (params.data && params.data.meetsCriteria) {
+          return { 'background-color': 'lightcoral' };
+        }
+        return null;
+      }
     }
   };
 
@@ -39,7 +45,11 @@
         throw new Error('File upload failed');
       }
 
-      const { columns, data } = await response.json();
+      const result = await response.json();
+
+      console.log("Response received:", result);  // Debug print
+
+      const { columns, data } = result;
 
       columnDefs = columns;
       rawData = data;

@@ -4,6 +4,7 @@
   import 'ag-grid-community/styles/ag-theme-alpine.css';
   import { Grid } from 'ag-grid-community';
   import FilterComponent from './FilterComponent.svelte';
+  import * as d3 from 'd3';
 
   let gridDiv;
   let fileInput;
@@ -11,6 +12,18 @@
   let gridData = [];
   let columnDefs = [];
   let showTable = false;
+
+  let mean = 0;
+  let stdDev = 0;
+
+  const colorPalettes = {
+    analytical: [d3.interpolateBlues, d3.interpolateGreens, d3.interpolateOranges, d3.interpolateReds],
+    business: [d3.interpolatePurples, d3.interpolateCool, d3.interpolateWarm, d3.interpolateYlGnBu],
+    financial: [d3.interpolateRdYlBu, d3.interpolateSpectral, d3.interpolatePiYG, d3.interpolateViridis],
+    marketing: [d3.interpolateMagma, d3.interpolatePlasma, d3.interpolateInferno, d3.interpolateCividis]
+  };
+
+  let selectedColors = colorPalettes.analytical;  // Default color palette
 
   let gridOptions = {
     columnDefs: [],
@@ -20,8 +33,21 @@
       filter: true,
       editable: true,
       cellStyle: params => {
-        if (params.data && params.data.meetsCriteria) {
-          return { 'background-color': 'lightcoral' };
+        if (params.data) {
+          if (params.data.meetsCriteria) {
+            return { 'background-color': 'lightcoral' };
+          } else if (params.data.stdDevValue !== undefined) {
+            const deviation = Math.abs(params.data.stdDevValue);
+            if (deviation < 1) {
+              return { 'background-color': selectedColors[0](deviation) };
+            } else if (deviation < 2) {
+              return { 'background-color': selectedColors[1](deviation - 1) };
+            } else if (deviation < 3) {
+              return { 'background-color': selectedColors[2](deviation - 2) };
+            } else {
+              return { 'background-color': selectedColors[3](deviation - 3) };
+            }
+          }
         }
         return null;
       }
@@ -53,15 +79,32 @@
 
       columnDefs = columns;
       rawData = data;
-      showTable = false;  // Hide table initially
+
+      // Calculate mean and standard deviation for the dataset
+      const values = rawData.map(row => row.value).filter(value => typeof value === 'number');
+      mean = d3.mean(values);
+      stdDev = d3.deviation(values);
+
+      // Add stdDevValue to each row for coloring
+      rawData.forEach(row => {
+        if (typeof row.value === 'number') {
+          row.stdDevValue = (row.value - mean) / stdDev;
+        }
+      });
+
+      showTable = true;  // Show table after processing
     } catch (error) {
       console.error('Error uploading file:', error);
+   
     }
   }
 
   function handleFilterData(event) {
     gridData = event.detail.data;
-    showTable = true;
+    const profile = event.detail.profile;
+    if (profile) {
+      selectedColors = colorPalettes[profile];
+    }
     reinitializeGrid();
   }
 

@@ -25,6 +25,22 @@
 
   let selectedColors = colorPalettes.analytical;  // Default color palette
 
+  function cellStyle(params) {
+    if (params.colDef.field === 'value' && params.data.stdDevValue !== undefined) {
+      const deviation = Math.abs(params.data.stdDevValue);
+      if (deviation < 1) {
+        return { 'background-color': selectedColors[0](deviation) };
+      } else if (deviation < 2) {
+        return { 'background-color': selectedColors[1](deviation - 1) };
+      } else if (deviation < 3) {
+        return { 'background-color': selectedColors[2](deviation - 2) };
+      } else {
+        return { 'background-color': selectedColors[3](deviation - 3) };
+      }
+    }
+    return null;
+  }
+
   let gridOptions = {
     columnDefs: [],
     rowData: [],
@@ -32,25 +48,7 @@
       sortable: true,
       filter: true,
       editable: true,
-      cellStyle: params => {
-        if (params.data) {
-          if (params.data.meetsCriteria) {
-            return { 'background-color': 'lightcoral' };
-          } else if (params.data.stdDevValue !== undefined) {
-            const deviation = Math.abs(params.data.stdDevValue);
-            if (deviation < 1) {
-              return { 'background-color': selectedColors[0](deviation) };
-            } else if (deviation < 2) {
-              return { 'background-color': selectedColors[1](deviation - 1) };
-            } else if (deviation < 3) {
-              return { 'background-color': selectedColors[2](deviation - 2) };
-            } else {
-              return { 'background-color': selectedColors[3](deviation - 3) };
-            }
-          }
-        }
-        return null;
-      }
+      cellStyle: cellStyle
     }
   };
 

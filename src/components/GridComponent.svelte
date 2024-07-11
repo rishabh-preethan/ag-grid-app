@@ -25,18 +25,32 @@
 
   let selectedColors = colorPalettes.analytical;  // Default color palette
 
+  function getTextColor(backgroundColor) {
+    const color = d3.hsl(backgroundColor);
+    const luminance = color.l;
+    const adjustedColor = luminance < 0.5 ? color.brighter(1.5) : color.darker(1.5);
+    return adjustedColor.toString();
+  }
+
   function cellStyle(params) {
     if (params.colDef.field === 'value' && params.data.stdDevValue !== undefined) {
       const deviation = Math.abs(params.data.stdDevValue);
+      let backgroundColor;
       if (deviation < 1) {
-        return { 'background-color': selectedColors[0](deviation) };
+        backgroundColor = selectedColors[0](deviation);
       } else if (deviation < 2) {
-        return { 'background-color': selectedColors[1](deviation - 1) };
+        backgroundColor = selectedColors[1](deviation - 1);
       } else if (deviation < 3) {
-        return { 'background-color': selectedColors[2](deviation - 2) };
+        backgroundColor = selectedColors[2](deviation - 2);
       } else {
-        return { 'background-color': selectedColors[3](deviation - 3) };
+        backgroundColor = selectedColors[3](deviation - 3);
       }
+      const textColor = getTextColor(backgroundColor);
+      return { 'background-color': backgroundColor, 'color': textColor, 'font-weight': 'bold' };
+    } else if (params.data[`${params.colDef.field}_meetsCriteria`]) {
+      const backgroundColor = 'rgba(255, 0, 0, 0.1)'; // Light red
+      const textColor = 'rgba(255, 0, 0, 0.6)'; // Bold and light red
+      return { 'background-color': backgroundColor, 'color': textColor, 'font-weight': 'bold' };
     }
     return null;
   }
@@ -93,7 +107,6 @@
       showTable = true;  // Show table after processing
     } catch (error) {
       console.error('Error uploading file:', error);
-   
     }
   }
 
@@ -127,8 +140,8 @@
 
 <style>
   .ag-theme-alpine {
-    height: 400px;
-    width: 100%;
+    height: 600px;
+    width: 100vh;
     border-width: 3px;
     border-radius: 5px;
     overflow: hidden;

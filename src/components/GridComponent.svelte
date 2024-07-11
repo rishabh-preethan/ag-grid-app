@@ -17,10 +17,10 @@
   let stdDev = 0;
 
   const colorPalettes = {
-    analytical: [d3.interpolateBlues, d3.interpolateGreens, d3.interpolateOranges, d3.interpolateReds],
-    business: [d3.interpolatePurples, d3.interpolateCool, d3.interpolateWarm, d3.interpolateYlGnBu],
-    financial: [d3.interpolateRdYlBu, d3.interpolateSpectral, d3.interpolatePiYG, d3.interpolateViridis],
-    marketing: [d3.interpolateMagma, d3.interpolatePlasma, d3.interpolateInferno, d3.interpolateCividis]
+    analytical: ['#ADD8E6', '#90EE90', '#FFA07A', '#FF6347'], // Lighter shades
+    business: ['#D8BFD8', '#B0E0E6', '#FFD700', '#98FB98'],
+    financial: ['#FFB6C1', '#FFDAB9', '#E6E6FA', '#F0E68C'],
+    marketing: ['#FFE4E1', '#F5DEB3', '#FFFACD', '#E0FFFF']
   };
 
   let selectedColors = colorPalettes.analytical;  // Default color palette
@@ -32,27 +32,40 @@
     return adjustedColor.toString();
   }
 
-  function cellStyle(params) {
-    if (params.colDef.field === 'value' && params.data.stdDevValue !== undefined) {
+  function createHighlightSpan(text, backgroundColor) {
+    const span = document.createElement('span');
+    span.style.backgroundColor = backgroundColor;
+    span.style.borderRadius = '10px';
+    span.style.padding = '2px 8px';
+    span.style.fontWeight = 'bold';
+    span.innerText = text;
+    return span;
+  }
+
+  function cellRenderer(params) {
+    const value = params.value;
+    if (params.data[`${params.colDef.field}_meetsCriteria`]) {
+      const highlightColor = 'rgba(255, 0, 0, 0.1)'; // Light red
+      const span = createHighlightSpan(value, highlightColor);
+      return span.outerHTML;
+    } else if (params.colDef.field === 'value' && params.data.stdDevValue !== undefined) {
       const deviation = Math.abs(params.data.stdDevValue);
       let backgroundColor;
       if (deviation < 1) {
-        backgroundColor = selectedColors[0](deviation);
+        backgroundColor = selectedColors[0];
       } else if (deviation < 2) {
-        backgroundColor = selectedColors[1](deviation - 1);
+        backgroundColor = selectedColors[1];
       } else if (deviation < 3) {
-        backgroundColor = selectedColors[2](deviation - 2);
+        backgroundColor = selectedColors[2];
       } else {
-        backgroundColor = selectedColors[3](deviation - 3);
+        backgroundColor = selectedColors[3];
       }
       const textColor = getTextColor(backgroundColor);
-      return { 'background-color': backgroundColor, 'color': textColor, 'font-weight': 'bold' };
-    } else if (params.data[`${params.colDef.field}_meetsCriteria`]) {
-      const backgroundColor = 'rgba(255, 0, 0, 0.1)'; // Light red
-      const textColor = 'rgba(255, 0, 0, 0.6)'; // Bold and light red
-      return { 'background-color': backgroundColor, 'color': textColor, 'font-weight': 'bold' };
+      const span = createHighlightSpan(value, backgroundColor);
+      span.style.color = textColor;
+      return span.outerHTML;
     }
-    return null;
+    return value;
   }
 
   let gridOptions = {
@@ -62,7 +75,7 @@
       sortable: true,
       filter: true,
       editable: true,
-      cellStyle: cellStyle
+      cellRenderer: cellRenderer
     }
   };
 
@@ -140,8 +153,8 @@
 
 <style>
   .ag-theme-alpine {
-    height: 600px;
-    width: 100vh;
+    height: 400px;
+    width: 100%;
     border-width: 3px;
     border-radius: 5px;
     overflow: hidden;

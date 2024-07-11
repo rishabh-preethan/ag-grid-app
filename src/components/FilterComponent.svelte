@@ -89,36 +89,32 @@
 
   function applyFilter() {
     const markedData = data.map(row => {
-      let meetsCriteria = false;
-      let stdDevValue = 0;
       if (selectedCriteria === 'above') {
-        meetsCriteria = Object.entries(row).some(([key, value]) => {
+        Object.entries(row).forEach(([key, value]) => {
           if (typeof value === 'number' && value > selectedValue) {
             row[`${key}_meetsCriteria`] = true;
           }
-          return value > selectedValue;
         });
       } else if (selectedCriteria === 'below') {
-        meetsCriteria = Object.entries(row).some(([key, value]) => {
+        Object.entries(row).forEach(([key, value]) => {
           if (typeof value === 'number' && value < selectedValue) {
             row[`${key}_meetsCriteria`] = true;
           }
-          return value < selectedValue;
         });
       } else if (selectedCriteria === 'equal') {
-        meetsCriteria = Object.entries(row).some(([key, value]) => {
+        Object.entries(row).forEach(([key, value]) => {
           if (typeof value === 'number' && value >= selectedValue.min && value <= selectedValue.max) {
             row[`${key}_meetsCriteria`] = true;
           }
-          return value >= selectedValue.min && value <= selectedValue.max;
         });
       } else if (selectedCriteria === 'stdDev') {
-        stdDevValue = Object.entries(row).filter(([key, value]) => typeof value === 'number').map(([key, value]) => {
-          return (value - mean) / stdDev;
-        })[0]; // Assuming single numeric value per row for simplicity
-        row['stdDevValue'] = stdDevValue;
+        Object.entries(row).forEach(([key, value]) => {
+          if (typeof value === 'number') {
+            row[`${key}_stdDevValue`] = (value - mean) / stdDev;
+          }
+        });
       }
-      return { ...row, meetsCriteria, stdDevValue };
+      return row;
     });
 
     dispatch('filterData', { data: markedData, profile: selectedProfile });

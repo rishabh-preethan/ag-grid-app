@@ -3,22 +3,32 @@ import pandas as pd
 from flask_cors import CORS
 import numpy as np
 
+# Initialize Flask application
 app = Flask(__name__)
+# Enable Cross-Origin Resource Sharing (CORS) for the app
 CORS(app)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    """
+    Endpoint to handle file upload and process the file (CSV or Excel).
+    Returns a JSON response containing the data and column information.
+    """
+    # Check if the 'file' part is in the request
     if 'file' not in request.files:
         print("No file part in request")
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
+    # Check if the file is selected
     if file.filename == '':
         print("No file selected")
         return jsonify({'error': 'No selected file'}), 400
 
+    # Check if the file is valid and process it
     if file and (file.filename.endswith('.csv') or file.filename.endswith('.xlsx')):
         try:
+            # Read the file into a DataFrame
             if file.filename.endswith('.csv'):
                 df = pd.read_csv(file)
             else:
@@ -28,19 +38,25 @@ def upload_file():
             df.replace([np.inf, -np.inf], np.nan, inplace=True)
             df = df.where(pd.notnull(df), None)
 
+            # Convert DataFrame to dictionary format suitable for JSON response
             data = df.to_dict(orient='records')
             columns = [{'headerName': col, 'field': col, 'sortable': True, 'filter': True, 'editable': True} for col in df.columns]
 
+            # Debugging information
             print("Columns:", columns)
             print("Data sample:", data[:5])  # Print first 5 rows for debugging
 
+            # Return JSON response with column and data information
             return jsonify({'columns': columns, 'data': data})
         except Exception as e:
+            # Handle any exceptions that occur during file processing
             print("Error processing file:", e)
             return jsonify({'error': 'Error processing file'}), 500
     else:
+        # Handle unsupported file formats
         print("Unsupported file format")
         return jsonify({'error': 'Unsupported file format'}), 400
 
 if __name__ == '__main__':
+    # Run the Flask application in debug mode
     app.run(debug=True)

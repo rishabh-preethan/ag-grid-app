@@ -8,16 +8,17 @@
 
   let gridDiv;
   let fileInput;
-  let rawData = [];
-  let gridData = [];
-  let columnDefs = [];
-  let showTable = false;
+  let rawData = [];  // Store raw data from the file
+  let gridData = [];  // Store filtered data for the grid
+  let columnDefs = [];  // Store column definitions for the grid
+  let showTable = false;  // Control visibility of the grid
 
-  let mean = 0;
-  let stdDev = 0;
+  let mean = 0;  // Mean of the data values
+  let stdDev = 0;  // Standard deviation of the data values
 
+  // Define color palettes for different profiles
   const colorPalettes = {
-    analytical: ['#ADD8E6', '#90EE90', '#FFA07A', '#FF6347'], // Lighter shades
+    analytical: ['#ADD8E6', '#90EE90', '#FFA07A', '#FF6347'],
     business: ['#D8BFD8', '#B0E0E6', '#FFD700', '#98FB98'],
     financial: ['#FFB6C1', '#FFDAB9', '#E6E6FA', '#F0E68C'],
     marketing: ['#FFE4E1', '#F5DEB3', '#FFFACD', '#E0FFFF']
@@ -25,6 +26,11 @@
 
   let selectedColors = colorPalettes.analytical;  // Default color palette
 
+  /**
+   * Determines the appropriate text color based on the background color.
+   * @param {string} backgroundColor - The background color in any CSS color format.
+   * @returns {string} The text color in the same format as the background color.
+   */
   function getTextColor(backgroundColor) {
     const color = d3.hsl(backgroundColor);
     const luminance = color.l;
@@ -32,6 +38,12 @@
     return adjustedColor.toString();
   }
 
+  /**
+   * Creates a span element with highlighted background.
+   * @param {string} text - The text content of the span.
+   * @param {string} backgroundColor - The background color for the span.
+   * @returns {HTMLElement} The created span element.
+   */
   function createHighlightSpan(text, backgroundColor) {
     const span = document.createElement('span');
     span.style.backgroundColor = backgroundColor;
@@ -42,6 +54,11 @@
     return span;
   }
 
+  /**
+   * Custom cell renderer for the grid. Highlights cells based on criteria.
+   * @param {object} params - Parameters provided by the ag-Grid framework.
+   * @returns {string} The HTML string for the cell content.
+   */
   function cellRenderer(params) {
     const value = params.value;
     if (params.data[`${params.colDef.field}_meetsCriteria`]) {
@@ -68,6 +85,7 @@
     return value;
   }
 
+  // Grid options
   let gridOptions = {
     columnDefs: [],
     rowData: [],
@@ -79,6 +97,10 @@
     }
   };
 
+  /**
+   * Handles the file upload event, sends the file to the server, and processes the response.
+   * @param {Event} event - The file upload event.
+   */
   async function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -123,6 +145,10 @@
     }
   }
 
+  /**
+   * Handles the filtered data event, updates the grid data and reinitializes the grid.
+   * @param {Event} event - The custom event containing filtered data and profile information.
+   */
   function handleFilterData(event) {
     gridData = event.detail.data;
     const profile = event.detail.profile;
@@ -132,6 +158,9 @@
     reinitializeGrid();
   }
 
+  /**
+   * Reinitializes the grid with new data and column definitions.
+   */
   function reinitializeGrid() {
     if (gridOptions.api) {
       gridOptions.api.destroy();
@@ -146,6 +175,9 @@
     }
   }
 
+  /**
+   * Initializes the grid on component mount.
+   */
   onMount(() => {
     reinitializeGrid();
   });
@@ -153,11 +185,13 @@
 
 <style>
   .ag-theme-alpine {
-    height: 400px;
-    width: 100%;
+    height: 600px;
+    width: 620px;
     border-width: 3px;
-    border-radius: 5px;
+    border-radius: 10px;
     overflow: hidden;
+    --ag-header-height: 30px; /* Smaller menu bar height */
+    --ag-header-column-font-weight: bold; /* Make column names bold */
   }
 </style>
 

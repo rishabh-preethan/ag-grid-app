@@ -12,6 +12,7 @@
   let gridData = [];  // Store filtered data for the grid
   let columnDefs = [];  // Store column definitions for the grid
   let showTable = false;  // Control visibility of the grid
+  let showAllColumns = false; // Control visibility of all columns
 
   let mean = 0;  // Mean of the data values
   let stdDev = 0;  // Standard deviation of the data values
@@ -166,13 +167,21 @@
       gridOptions.api.destroy();
     }
 
-    gridOptions.columnDefs = columnDefs;
+    gridOptions.columnDefs = showAllColumns ? columnDefs : columnDefs.slice(0, 3);
     gridOptions.rowData = gridData;
 
     // Ensure gridDiv is available before initializing Grid
     if (gridDiv) {
       new Grid(gridDiv, gridOptions);
     }
+  }
+
+  /**
+   * Toggles the visibility of all columns.
+   */
+  function toggleColumns() {
+    showAllColumns = !showAllColumns;
+    reinitializeGrid();
   }
 
   /**
@@ -186,21 +195,70 @@
 <style>
   .ag-theme-alpine {
     height: 600px;
-    width: 620px;
+    width: 100%;
+    max-width: 620px;
     border-width: 3px;
     border-radius: 10px;
     overflow: hidden;
     --ag-header-height: 30px; /* Smaller menu bar height */
     --ag-header-column-font-weight: bold; /* Make column names bold */
   }
+
+  .file-upload-button {
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    margin: 0.2rem;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s; /* Add transition for hover effect */
+  }
+
+  .file-upload-button:hover {
+    background-color: #f0f0f0;
+  }
+
+  .toggle-button {
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    margin: 0.2rem;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s; /* Add transition for hover effect */
+  }
+
+  .toggle-button:hover {
+    background-color: #f0f0f0;
+  }
+
+  @media (max-width: 600px) {
+    .ag-theme-alpine {
+      height: 400px;
+      width: 100%;
+    }
+
+    .file-upload-button,
+    .toggle-button {
+      font-size: 12px;
+      padding: 0.4rem 0.8rem;
+    }
+  }
 </style>
 
 <div>
-  <input type="file" bind:this={fileInput} accept=".csv, .xlsx" on:change={handleFileUpload} />
+  <input type="file" bind:this={fileInput} class="file-upload-button" accept=".csv, .xlsx" on:change={handleFileUpload} />
   {#if rawData.length > 0}
     <FilterComponent data={rawData} on:filterData={handleFilterData} />
   {/if}
   {#if showTable}
     <div bind:this={gridDiv} class="ag-theme-alpine"></div>
+  {/if}
+  {#if showTable}
+    <button class="toggle-button" on:click={toggleColumns}>
+      {showAllColumns ? 'Show Less' : 'Show More'}
+    </button>
   {/if}
 </div>

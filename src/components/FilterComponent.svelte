@@ -192,6 +192,13 @@
   .filter-buttons button:hover {
     background-color: #f0f0f0;
   }
+
+  @media (max-width: 600px) {
+    .filter-buttons button {
+      font-size: 10px;
+      padding: 0.3rem 0.6rem;
+    }
+  }
 </style>
 
 <div class="filter-buttons">

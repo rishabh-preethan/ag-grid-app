@@ -5,21 +5,22 @@
   import { Grid } from 'ag-grid-community';
   import FilterComponent from './FilterComponent.svelte';
   import * as d3 from 'd3';
+  import debounce from 'lodash/debounce';  // Correctly import debounce
 
   let gridDiv;
   let fileInput;
-  let rawData = [];  // Store raw data from the file
-  let gridData = [];  // Store filtered data for the grid
-  let columnDefs = [];  // Store column definitions for the grid
-  let showTable = false;  // Control visibility of the grid
-  let showAllColumns = false; // Control visibility of all columns
-  let currentPage = 1;  // Track the current page
-  let totalPages = 1;  // Track the total number of pages (use let instead of const)
+  let rawData = [];
+  let gridData = [];
+  let columnDefs = [];
+  let showTable = false;
+  let showAllColumns = false;
+  let currentPage = 1;
+  let totalPages = 1;
+  let searchQuery = '';
 
-  let mean = 0;  // Mean of the data values
-  let stdDev = 0;  // Standard deviation of the data values
+  let mean = 0;
+  let stdDev = 0;
 
-  // Define color palettes for different profiles
   const colorPalettes = {
     analytical: ['#ADD8E6', '#90EE90', '#FFA07A', '#FF6347'],
     business: ['#D8BFD8', '#B0E0E6', '#FFD700', '#98FB98'],
@@ -27,7 +28,7 @@
     marketing: ['#FFE4E1', '#F5DEB3', '#FFFACD', '#E0FFFF']
   };
 
-  let selectedColors = colorPalettes.analytical;  // Default color palette
+  let selectedColors = colorPalettes.analytical;
 
   function getTextColor(backgroundColor) {
     const color = d3.hsl(backgroundColor);
@@ -49,7 +50,7 @@
   function cellRenderer(params) {
     const value = params.value;
     if (params.data[`${params.colDef.field}_meetsCriteria`]) {
-      const highlightColor = 'rgba(255, 0, 0, 0.1)'; // Light red
+      const highlightColor = 'rgba(255, 0, 0, 0.1)';
       const span = createHighlightSpan(value, highlightColor);
       return span.outerHTML;
     } else if (params.colDef.field === 'value' && params.data.stdDevValue !== undefined) {
@@ -107,7 +108,7 @@
       columnDefs = columns;
       gridData = data;
       currentPage = page;
-      totalPages = total;  // Use let for totalPages
+      totalPages = total;
 
       showTable = true;
       reinitializeGrid();
@@ -137,12 +138,39 @@
 
       gridData = data;
       currentPage = current;
-      totalPages = total;  // Use let for totalPages
+      totalPages = total;
 
       reinitializeGrid();
     } catch (error) {
       console.error('Error fetching page data:', error);
     }
+  }
+
+  async function search(query) {
+    try {
+      const response = await fetch(`http://localhost:5000/search?query=${encodeURIComponent(query)}`);
+      if (!response.ok) {
+        throw new Error('Failed to search data');
+      }
+
+      const result = await response.json();
+      const { data, page, totalPages: total } = result;
+
+      gridData = data;
+      currentPage = page;
+      totalPages = total;
+
+      reinitializeGrid();
+    } catch (error) {
+      console.error('Error searching data:', error);
+    }
+  }
+
+  const debouncedSearch = debounce(search, 300);
+
+  function handleSearch(event) {
+    searchQuery = event.target.value;
+    debouncedSearch(searchQuery);
   }
 
   function reinitializeGrid() {
@@ -237,6 +265,16 @@
     background-color: #f0f0f0;
   }
 
+  .search-input {
+    width: 100%;
+    max-width: 600px;
+    padding: 0.5rem;
+    margin: 0.2rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+
   @media (max-width: 600px) {
     .ag-theme-alpine {
       height: 400px;
@@ -245,7 +283,8 @@
 
     .file-upload-button,
     .toggle-button,
-    .pagination-button {
+    .pagination-button,
+    .search-input {
       font-size: 12px;
       padding: 0.4rem 0.8rem;
     }
@@ -254,6 +293,7 @@
 
 <div>
   <input type="file" bind:this={fileInput} class="file-upload-button" accept=".csv, .xlsx" on:change={handleFileUpload} />
+  <input type="text" class="search-input" placeholder="Search..." on:input={handleSearch} />
   {#if rawData.length > 0}
     <FilterComponent data={rawData} on:filterData={handleFilterData} />
   {/if}

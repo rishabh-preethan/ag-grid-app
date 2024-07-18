@@ -5,7 +5,7 @@
   import { Grid } from 'ag-grid-community';
   import FilterComponent from './FilterComponent.svelte';
   import * as d3 from 'd3';
-  import debounce from 'lodash/debounce';  // Correctly import debounce
+  import debounce from 'lodash/debounce';
 
   let gridDiv;
   let fileInput;
@@ -107,6 +107,7 @@
 
       columnDefs = columns;
       gridData = data;
+      rawData = data;
       currentPage = page;
       totalPages = total;
 
@@ -275,6 +276,13 @@
     font-size: 14px;
   }
 
+  .controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
   @media (max-width: 600px) {
     .ag-theme-alpine {
       height: 400px;
@@ -293,14 +301,12 @@
 
 <div>
   <input type="file" bind:this={fileInput} class="file-upload-button" accept=".csv, .xlsx" on:change={handleFileUpload} />
-  <input type="text" class="search-input" placeholder="Search..." on:input={handleSearch} />
-  {#if rawData.length > 0}
-    <FilterComponent data={rawData} on:filterData={handleFilterData} />
-  {/if}
   {#if showTable}
+    <div class="controls">
+      <input type="text" class="search-input" placeholder="Search..." on:input={handleSearch} />
+      <FilterComponent data={rawData} on:filterData={handleFilterData} />
+    </div>
     <div bind:this={gridDiv} class="ag-theme-alpine"></div>
-  {/if}
-  {#if showTable}
     <button class="toggle-button" on:click={toggleColumns}>
       {showAllColumns ? 'Show Less' : 'Show More'}
     </button>

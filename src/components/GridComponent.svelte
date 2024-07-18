@@ -13,6 +13,8 @@
   let columnDefs = [];  // Store column definitions for the grid
   let showTable = false;  // Control visibility of the grid
   let showAllColumns = false; // Control visibility of all columns
+  let currentPage = 1;  // Track the current page
+  let totalPages = 1;  // Track the total number of pages (use let instead of const)
 
   let mean = 0;  // Mean of the data values
   let stdDev = 0;  // Standard deviation of the data values
@@ -27,11 +29,6 @@
 
   let selectedColors = colorPalettes.analytical;  // Default color palette
 
-  /**
-   * Determines the appropriate text color based on the background color.
-   * @param {string} backgroundColor - The background color in any CSS color format.
-   * @returns {string} The text color in the same format as the background color.
-   */
   function getTextColor(backgroundColor) {
     const color = d3.hsl(backgroundColor);
     const luminance = color.l;
@@ -39,12 +36,6 @@
     return adjustedColor.toString();
   }
 
-  /**
-   * Creates a span element with highlighted background.
-   * @param {string} text - The text content of the span.
-   * @param {string} backgroundColor - The background color for the span.
-   * @returns {HTMLElement} The created span element.
-   */
   function createHighlightSpan(text, backgroundColor) {
     const span = document.createElement('span');
     span.style.backgroundColor = backgroundColor;
@@ -55,11 +46,6 @@
     return span;
   }
 
-  /**
-   * Custom cell renderer for the grid. Highlights cells based on criteria.
-   * @param {object} params - Parameters provided by the ag-Grid framework.
-   * @returns {string} The HTML string for the cell content.
-   */
   function cellRenderer(params) {
     const value = params.value;
     if (params.data[`${params.colDef.field}_meetsCriteria`]) {
@@ -86,7 +72,6 @@
     return value;
   }
 
-  // Grid options
   let gridOptions = {
     columnDefs: [],
     rowData: [],
@@ -98,10 +83,6 @@
     }
   };
 
-  /**
-   * Handles the file upload event, sends the file to the server, and processes the response.
-   * @param {Event} event - The file upload event.
-   */
   async function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -121,35 +102,20 @@
 
       const result = await response.json();
 
-      console.log("Response received:", result);  // Debug print
-
-      const { columns, data } = result;
+      const { columns, data, page, totalPages: total } = result;
 
       columnDefs = columns;
-      rawData = data;
+      gridData = data;
+      currentPage = page;
+      totalPages = total;  // Use let for totalPages
 
-      // Calculate mean and standard deviation for the dataset
-      const values = rawData.map(row => row.value).filter(value => typeof value === 'number');
-      mean = d3.mean(values);
-      stdDev = d3.deviation(values);
-
-      // Add stdDevValue to each row for coloring
-      rawData.forEach(row => {
-        if (typeof row.value === 'number') {
-          row.stdDevValue = (row.value - mean) / stdDev;
-        }
-      });
-
-      showTable = true;  // Show table after processing
+      showTable = true;
+      reinitializeGrid();
     } catch (error) {
       console.error('Error uploading file:', error);
     }
   }
 
-  /**
-   * Handles the filtered data event, updates the grid data and reinitializes the grid.
-   * @param {Event} event - The custom event containing filtered data and profile information.
-   */
   function handleFilterData(event) {
     gridData = event.detail.data;
     const profile = event.detail.profile;
@@ -159,9 +125,26 @@
     reinitializeGrid();
   }
 
-  /**
-   * Reinitializes the grid with new data and column definitions.
-   */
+  async function fetchPage(page) {
+    try {
+      const response = await fetch(`http://localhost:5000/data/${page}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch page data');
+      }
+
+      const result = await response.json();
+      const { data, page: current, totalPages: total } = result;
+
+      gridData = data;
+      currentPage = current;
+      totalPages = total;  // Use let for totalPages
+
+      reinitializeGrid();
+    } catch (error) {
+      console.error('Error fetching page data:', error);
+    }
+  }
+
   function reinitializeGrid() {
     if (gridOptions.api) {
       gridOptions.api.destroy();
@@ -170,23 +153,28 @@
     gridOptions.columnDefs = showAllColumns ? columnDefs : columnDefs.slice(0, 3);
     gridOptions.rowData = gridData;
 
-    // Ensure gridDiv is available before initializing Grid
     if (gridDiv) {
       new Grid(gridDiv, gridOptions);
     }
   }
 
-  /**
-   * Toggles the visibility of all columns.
-   */
   function toggleColumns() {
     showAllColumns = !showAllColumns;
     reinitializeGrid();
   }
 
-  /**
-   * Initializes the grid on component mount.
-   */
+  function nextPage() {
+    if (currentPage < totalPages) {
+      fetchPage(currentPage + 1);
+    }
+  }
+
+  function prevPage() {
+    if (currentPage > 1) {
+      fetchPage(currentPage - 1);
+    }
+  }
+
   onMount(() => {
     reinitializeGrid();
   });
@@ -200,8 +188,8 @@
     border-width: 3px;
     border-radius: 10px;
     overflow: hidden;
-    --ag-header-height: 30px; /* Smaller menu bar height */
-    --ag-header-column-font-weight: bold; /* Make column names bold */
+    --ag-header-height: 30px;
+    --ag-header-column-font-weight: bold;
   }
 
   .file-upload-button {
@@ -212,7 +200,7 @@
     margin: 0.2rem;
     cursor: pointer;
     font-size: 14px;
-    transition: background-color 0.3s; /* Add transition for hover effect */
+    transition: background-color 0.3s;
   }
 
   .file-upload-button:hover {
@@ -227,10 +215,25 @@
     margin: 0.2rem;
     cursor: pointer;
     font-size: 14px;
-    transition: background-color 0.3s; /* Add transition for hover effect */
+    transition: background-color 0.3s;
   }
 
   .toggle-button:hover {
+    background-color: #f0f0f0;
+  }
+
+  .pagination-button {
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    margin: 0.2rem;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
+
+  .pagination-button:hover {
     background-color: #f0f0f0;
   }
 
@@ -241,7 +244,8 @@
     }
 
     .file-upload-button,
-    .toggle-button {
+    .toggle-button,
+    .pagination-button {
       font-size: 12px;
       padding: 0.4rem 0.8rem;
     }
@@ -260,5 +264,8 @@
     <button class="toggle-button" on:click={toggleColumns}>
       {showAllColumns ? 'Show Less' : 'Show More'}
     </button>
+    <button class="pagination-button" on:click={prevPage} disabled={currentPage === 1}>Previous</button>
+    <button class="pagination-button" on:click={nextPage} disabled={currentPage === totalPages}>Next</button>
+    <span>Page {currentPage} of {totalPages}</span>
   {/if}
 </div>

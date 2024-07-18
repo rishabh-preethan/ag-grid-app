@@ -2,11 +2,16 @@ from flask import Flask, request, jsonify
 import pandas as pd
 from flask_cors import CORS
 import numpy as np
+import math
 
 # Initialize Flask application
 app = Flask(__name__)
 # Enable Cross-Origin Resource Sharing (CORS) for the app
 CORS(app)
+
+# Global variables to store the uploaded data and column definitions
+global_data = []
+global_columns = []
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -14,15 +19,15 @@ def upload_file():
     Endpoint to handle file upload and process the file (CSV or Excel).
     Returns a JSON response containing the data and column information.
     """
+    global global_data, global_columns
+
     # Check if the 'file' part is in the request
     if 'file' not in request.files:
-        print("No file part in request")
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
     # Check if the file is selected
     if file.filename == '':
-        print("No file selected")
         return jsonify({'error': 'No selected file'}), 400
 
     # Check if the file is valid and process it
@@ -39,23 +44,54 @@ def upload_file():
             df = df.where(pd.notnull(df), None)
 
             # Convert DataFrame to dictionary format suitable for JSON response
-            data = df.to_dict(orient='records')
-            columns = [{'headerName': col, 'field': col, 'sortable': True, 'filter': True, 'editable': True} for col in df.columns]
+            global_data = df.to_dict(orient='records')
+            global_columns = [{'headerName': col, 'field': col, 'sortable': True, 'filter': True, 'editable': True} for col in df.columns]
 
-            # Debugging information
-            print("Columns:", columns)
-            print("Data sample:", data[:5])  # Print first 5 rows for debugging
-
-            # Return JSON response with column and data information
-            return jsonify({'columns': columns, 'data': data})
+            # Return the column information and initial page of data
+            return get_paginated_data(1)
         except Exception as e:
             # Handle any exceptions that occur during file processing
-            print("Error processing file:", e)
             return jsonify({'error': 'Error processing file'}), 500
     else:
         # Handle unsupported file formats
-        print("Unsupported file format")
         return jsonify({'error': 'Unsupported file format'}), 400
+
+@app.route('/data', methods=['GET'])
+def get_paginated_data(page=1):
+    """
+    Endpoint to get paginated data.
+    :param page: Page number (1-indexed)
+    :return: JSON response with paginated data
+    """
+    global global_data, global_columns
+
+    # Set the number of rows per page
+    rows_per_page = 20
+    start = (page - 1) * rows_per_page
+    end = start + rows_per_page
+
+    # Paginate the data
+    paginated_data = global_data[start:end]
+    total_pages = math.ceil(len(global_data) / rows_per_page)
+
+    # Create response
+    response = {
+        'columns': global_columns,
+        'data': paginated_data,
+        'page': page,
+        'totalPages': total_pages
+    }
+
+    return jsonify(response)
+
+@app.route('/data/<int:page>', methods=['GET'])
+def get_page(page):
+    """
+    Endpoint to handle requests for specific pages of data.
+    :param page: Page number (1-indexed)
+    :return: JSON response with paginated data
+    """
+    return get_paginated_data(page)
 
 if __name__ == '__main__':
     # Run the Flask application in debug mode

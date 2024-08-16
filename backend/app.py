@@ -13,6 +13,20 @@ CORS(app)
 global_data = []
 global_columns = []
 
+def generate_summary(df):
+    summary = {}
+    for col in df.columns:
+        if pd.api.types.is_numeric_dtype(df[col]):
+            summary[col] = f"Min: {df[col].min()}, Max: {df[col].max()}, Mode: {df[col].mode().iloc[0] if not df[col].mode().empty else 'N/A'}"
+        elif pd.api.types.is_categorical_dtype(df[col]) or df[col].dtype == object:
+            value_counts = df[col].value_counts(normalize=True) * 100
+            top_categories = value_counts.head(3).to_dict()
+            top_categories_str = ', '.join([f"{k}: {v:.1f}%" for k, v in top_categories.items()])
+            summary[col] = f"Top categories: {top_categories_str}"
+        else:
+            summary[col] = f"Unique values: {df[col].nunique()}"
+    return summary
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     global global_data, global_columns
@@ -34,12 +48,16 @@ def upload_file():
             df.replace([np.inf, -np.inf], np.nan, inplace=True)
             df = df.where(pd.notnull(df), None)
 
+            summary = generate_summary(df)
+            summary_row = {col: summary[col] for col in df.columns}
+            df = pd.concat([pd.DataFrame([summary_row]), df], ignore_index=True)
+
             global_data = df.to_dict(orient='records')
             global_columns = [{'headerName': col, 'field': col, 'sortable': True, 'filter': True, 'editable': True} for col in df.columns]
 
             return get_paginated_data(1)
         except Exception as e:
-            return jsonify({'error': 'Error processing file'}), 500
+            return jsonify({'error': 'Error processing file', 'message': str(e)}), 500
     else:
         return jsonify({'error': 'Unsupported file format'}), 400
 

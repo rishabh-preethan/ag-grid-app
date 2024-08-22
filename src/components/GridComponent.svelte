@@ -74,15 +74,58 @@
   }
 
   let gridOptions = {
-    columnDefs: [],
-    rowData: [],
-    defaultColDef: {
-      sortable: true,
-      filter: true,
-      editable: true,
-      cellRenderer: cellRenderer
+  columnDefs: [],
+  rowData: [],
+  defaultColDef: {
+    sortable: true,
+    filter: true,
+    editable: true,
+    cellRenderer: cellRenderer,
+    cellStyle: (params) => {
+      // Center-align text and wrap for the first row on the first page
+      if (params.node.rowIndex === 0 && currentPage === 1) {
+        return {
+          textAlign: 'center',
+          whiteSpace: 'normal',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          lineHeight: '1.4',
+        };
+      }
+      return null; // Default styling for other rows
+    },
+    autoHeight: true, // Enable text wrapping for all rows
+  },
+  getRowHeight: (params) => {
+    // Apply larger height to the first row on the first page
+    if (params.node.rowIndex === 0 && currentPage === 1) {
+      return 60; // Adjust the height to make the row appear larger
     }
-  };
+    return 30; // Default row height
+  },
+  onGridReady: (params) => {
+    setTimeout(() => {
+      params.api.resetRowHeights(); // Ensure all rows are recalculated after grid is ready
+    }, 0);
+  }
+};
+
+function updateRowHeights() {
+  if (gridOptions.api) {
+    gridOptions.api.resetRowHeights();
+  }
+}
+
+// Call this function whenever you change row data or the page
+function handlePageChange() {
+  fetchPage(currentPage).then(() => {
+    updateRowHeights();
+  });
+}
+
 
   async function handleFileUpload(event) {
     const file = event.target.files[0];

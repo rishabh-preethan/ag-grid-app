@@ -3,6 +3,7 @@ import pandas as pd
 from flask_cors import CORS
 import numpy as np
 import math
+from dateutil.parser import parse
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -13,56 +14,30 @@ CORS(app)
 global_data = []
 global_columns = []
 
+def is_date(string):
+    try:
+        parse(string)
+        return True
+    except (ValueError, OverflowError):
+        return False
+
 def generate_summary(df):
     summary = {}
     unique_threshold = 0.9  # Define a threshold for uniqueness
 
-    # Keywords and date formats to check
-    date_keywords = [
-        "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
-        "january", "february", "march", "april", "may", "june", "july", "august", "september",
-        "october", "november", "december"
-    ]
-    date_patterns = ["-", "/"]  # Patterns commonly used in date formats
-    date_formats = [
-        "%Y-%m-%d",  # Format like 2023-09-07
-        "%m-%d-%Y",  # Format like 09-07-2023
-        "%m-%d-%y",  # Format like 09-07-23
-        "%Y/%m/%d",  # Format like 2023/09/07
-        "%m/%d/%Y",  # Format like 09/07/2023
-        "%m/%d/%y"   # Format like 09/07/23
-    ]
-
     for col in df.columns:
-        # Sample values to check
+        # Sample values to check for date patterns
         sample_values = df[col].astype(str).head(10).str.lower()
 
-        # Check for date-related keywords or patterns in the sample values
-        contains_date_keywords = any(keyword in ' '.join(sample_values) for keyword in date_keywords)
-        contains_date_patterns = any(pattern in ' '.join(sample_values) for pattern in date_patterns)
-        contains_date_formats = any(
-            value.count('-') in [2, 3] and (len(value.split('-')[0]) in [4, 2]) for value in sample_values
-        )
+        # Check if the sample values can be identified as dates using dateutil.parser
+        contains_dates = all(is_date(value) for value in sample_values)
 
-        if contains_date_keywords or contains_date_patterns or contains_date_formats:
-            # Attempt to convert using different formats
-            temp_col = None
-            for fmt in date_formats:
-                try:
-                    temp_col = pd.to_datetime(df[col], format=fmt, errors='coerce')
-                    if temp_col.notna().any():  # Check if conversion succeeded
-                        df[col] = temp_col
-                        summary[col] = f"Earliest datetime: {df[col].min()}, Latest datetime: {df[col].max()}"
-                        break
-                except ValueError:
-                    continue
+        if contains_dates:
+            # Convert column to datetime using dateutil.parser
+            df[col] = pd.to_datetime(df[col], errors='coerce')
 
-            if temp_col is None:
-                # Fallback to general parsing if no specific format worked
-                temp_col = pd.to_datetime(df[col], errors='coerce')
-                if temp_col.notna().any():
-                    df[col] = temp_col
-                    summary[col] = f"Earliest datetime: {df[col].min()}, Latest datetime: {df[col].max()}"
+            if df[col].notna().any():
+                summary[col] = f"Earliest datetime: {df[col].min()}, Latest datetime: {df[col].max()}"
                 continue
 
         # Calculate unique ratio
@@ -79,6 +54,7 @@ def generate_summary(df):
             summary[col] = f"Unique values: {df[col].nunique()}"
 
     return summary
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():

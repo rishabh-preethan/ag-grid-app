@@ -1,8 +1,8 @@
-#Project Documentation
-###Overview
+# Project Documentation
+### Overview
 This project consists of a Svelte frontend and a Python backend that allows users to upload files, processes the data, categorizes columns, generates summaries, and visualizes the results using ECharts. The data is displayed in an interactive table powered by ag-Grid, providing features like pagination, column toggling, search, and custom cell rendering.
 
-###Architecture
+### Architecture
 * Frontend: Built with Svelte, using ag-Grid for data display and ECharts for visualization.
 * Backend: Built with Flask in Python, handles file uploads, data processing, column categorization, and summary generation using various statistical techniques.
 

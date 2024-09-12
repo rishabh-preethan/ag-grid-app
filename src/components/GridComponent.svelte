@@ -1,4 +1,6 @@
 <script>
+  // This component gets the table data from the backend and renders the ag-grid table with that data and its summary
+
   import { onMount } from 'svelte';
   import 'ag-grid-community/styles/ag-grid.css';
   import 'ag-grid-community/styles/ag-theme-alpine.css';
@@ -6,6 +8,7 @@
   import FilterComponent from './FilterComponent.svelte';
   import * as d3 from 'd3';
   import debounce from 'lodash/debounce';
+  import * as echarts from 'echarts';
 
   let gridDiv;
   let fileInput;
@@ -48,10 +51,30 @@
   }
 
   function cellRenderer(params) {
-    const value = params.value;
+    const columnName = params.colDef.field; // Get the current column name dynamically
+
+    // Check if we are on the first row and handling the column dynamically
+    if (params.node.rowIndex === 0) {
+      // Check if chart options exist for the dynamic column name
+      if (params.data && params.data[columnName] && params.data[columnName].chart_options) {
+        const chartDiv = document.createElement('div');
+        chartDiv.style.width = '200%';
+        chartDiv.style.height = '200px'; // Adjust height as needed
+
+        const chart = echarts.init(chartDiv);
+        chart.setOption(params.data[columnName].chart_options); // Use dynamic column name
+
+        return chartDiv;
+      } else {
+        console.error(`Chart options are not defined for column: ${columnName}`);
+        return 'No chart options'; // Return a fallback or placeholder
+      }
+    }
+
+    // Handle other cases
     if (params.data[`${params.colDef.field}_meetsCriteria`]) {
       const highlightColor = 'rgba(255, 0, 0, 0.1)';
-      const span = createHighlightSpan(value, highlightColor);
+      const span = createHighlightSpan(params.value, highlightColor);
       return span.outerHTML;
     } else if (params.colDef.field === 'value' && params.data.stdDevValue !== undefined) {
       const deviation = Math.abs(params.data.stdDevValue);
@@ -66,11 +89,12 @@
         backgroundColor = selectedColors[3];
       }
       const textColor = getTextColor(backgroundColor);
-      const span = createHighlightSpan(value, backgroundColor);
+      const span = createHighlightSpan(params.value, backgroundColor);
       span.style.color = textColor;
       return span.outerHTML;
     }
-    return value;
+
+    return params.value;
   }
 
   let gridOptions = {
@@ -127,39 +151,43 @@ function handlePageChange() {
 }
 
 
-  async function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
+  const formData = new FormData();
+  formData.append('file', file);
 
-    try {
-      const response = await fetch('http://localhost:5000/upload', {
-        method: 'POST',
-        body: formData
-      });
+  try {
+    const response = await fetch('http://localhost:5000/upload', {
+      method: 'POST',
+      body: formData
+    });
 
-      if (!response.ok) {
-        throw new Error('File upload failed');
-      }
-
-      const result = await response.json();
-
-      const { columns, data, page, totalPages: total } = result;
-
-      columnDefs = columns;
-      gridData = data;
-      rawData = data;
-      currentPage = page;
-      totalPages = total;
-
-      showTable = true;
-      reinitializeGrid();
-    } catch (error) {
-      console.error('Error uploading file:', error);
+    if (!response.ok) {
+      throw new Error('File upload failed');
     }
+
+    const result = await response.json();
+
+    const { columns, data, page, totalPages: total } = result;
+
+    // Verify the structure of the received data
+    console.log(data); // Check the data format here
+
+    columnDefs = columns;
+    gridData = data;
+    rawData = data;
+    currentPage = page;
+    totalPages = total;
+
+    showTable = true;
+    reinitializeGrid();
+  } catch (error) {
+    console.error('Error uploading file:', error);
   }
+}
+
 
   function handleFilterData(event) {
     gridData = event.detail.data;
@@ -227,8 +255,11 @@ function handlePageChange() {
 
     if (gridDiv) {
       new Grid(gridDiv, gridOptions);
+      updateRowHeights();
     }
   }
+
+
 
   function toggleColumns() {
     showAllColumns = !showAllColumns;

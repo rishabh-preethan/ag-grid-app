@@ -25,15 +25,23 @@ def save_plot(fig, column_name):
     
     return filepath
 
+from dateutil import parser
+
 def summarize_date_time(df, column_name):
-    date_format = "%Y-%m-%d"  # Adjust to match the format in your CSV
-    try:
-        date_series = pd.to_datetime(df[column_name], format=date_format, errors='coerce')
-    except ValueError:
-        date_series = df[column_name].apply(lambda x: pd.to_datetime(x, errors='coerce') if pd.notnull(x) else pd.NaT)
+    # Attempt to parse dates using dateutil.parser
+    def try_parse_date(value):
+        try:
+            # Try to parse the value; if successful, return the parsed date
+            return parser.parse(value)
+        except (parser.ParserError, TypeError, ValueError):
+            # If parsing fails, return NaT (Not a Time)
+            return pd.NaT
+
+    # Apply the parsing function to the column
+    date_series = df[column_name].apply(try_parse_date)
 
     # Convert dates to strings for ECharts
-    date_series_str = date_series.dropna().dt.strftime(date_format)
+    date_series_str = date_series.dropna().dt.strftime("%Y-%m-%d")
     
     # Get date counts
     date_counts = Counter(date_series_str)
@@ -52,11 +60,17 @@ def summarize_date_time(df, column_name):
             "type": "category",
             "data": sorted_dates,
             "axisLabel": {
-                "rotate": 45
+                "show": False  # Hide x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
             }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "axisLabel": {
+                "show": False  # Hide y-axis labels
+            }
         },
         "series": [
             {
@@ -69,52 +83,65 @@ def summarize_date_time(df, column_name):
     }
     
     date_summary = {
-        'min_date': date_series.min().strftime(date_format),
-        'max_date': date_series.max().strftime(date_format),
-        'unique_dates': date_series.nunique(),
-        'null_count': date_series.isnull().sum(),
         'chart_options': chart_options  # Include ECharts options in the summary
     }
     
     return date_summary
 
+
+
 def summarize_numeric(df, column_name):
     # Calculate summary statistics
-    summary = {
-        "Mean": df[column_name].mean(),
-        "Median": df[column_name].median(),
-        "Standard Deviation": df[column_name].std(),
-        "Min": df[column_name].min(),
-        "Max": df[column_name].max(),
-        "25th Percentile": df[column_name].quantile(0.25),
-        "75th Percentile": df[column_name].quantile(0.75),
-        "Unique Values": df[column_name].nunique()
-    }
+    summary = {}
 
     # Drop NA values
     data = df[column_name].dropna()
-    
-    # Calculate histogram data
-    counts, bin_edges = np.histogram(data, bins=30)
+
+    # Calculate basic statistics
+    mean_value = data.mean()
+    median_value = data.median()
+    std_dev = data.std()
+
+    # Calculate histogram data (dynamic bin size based on data range)
+    bin_count = 30  # Set the number of bins
+    counts, bin_edges = np.histogram(data, bins=bin_count)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    
-    # Convert histogram data to ECharts format
+
+    # Convert histogram data to ECharts format with meaningful labels
     chart_options = {
         "title": {
-            "text": f"Distribution of {column_name}"
+            "text": f"Distribution of {column_name}",
+            "subtext": f"Mean: {mean_value:.2f},Std Dev: {std_dev:.2f}",
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "subtextStyle": {
+                "fontSize": 12  # Smaller font size for the subtext
+            },
+            "left": 'center',
+            "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis"
+            "trigger": "axis",
+            "formatter": "{b}: {c}"  # Display bin center and count
+        },
+        "grid": {
+            "top": 60  # Add more space at the top to prevent overlap
         },
         "xAxis": {
             "type": "category",
             "data": [f"{round(edge, 2)}" for edge in bin_centers],
             "axisLabel": {
-                "rotate": 45
+                "show": False  # Hide x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
             }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "nameLocation": "middle",
+            "nameGap": 35  # Increase the gap between the y-axis label and the axis
         },
         "series": [
             {
@@ -125,10 +152,10 @@ def summarize_numeric(df, column_name):
             }
         ]
     }
-    
+
     # Include the ECharts options in the summary
     summary['chart_options'] = chart_options
-    
+
     return summary
 
 def summarize_categorical(df, column_name):
@@ -136,12 +163,7 @@ def summarize_categorical(df, column_name):
     value_counts = df[column_name].value_counts()
     
     # Summary statistics
-    summary = {
-        "Most Frequent Value": value_counts.idxmax(),
-        "Frequency of Most Frequent Value": value_counts.max(),
-        "Unique Categories": value_counts.shape[0],
-        "Top 5 Categories": value_counts.head(5).to_dict()
-    }
+    summary = {}
     
     # Top 5 categories and frequencies
     top_categories = value_counts.head(5)
@@ -151,27 +173,44 @@ def summarize_categorical(df, column_name):
     # Generate ECharts options
     chart_options = {
         "title": {
-            "text": f"Top 5 Categories of {column_name}"
+            "text": f"Top Categories",
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "left": 'center',
+            "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis"
+            "trigger": "axis",
+            "formatter": "{b}: {c} occurrences"  # Display category and count
+        },
+        "grid": {
+            "top": 60  # Add more space at the top to prevent overlap
         },
         "xAxis": {
             "type": "category",
             "data": categories,
             "axisLabel": {
-                "rotate": 45
+                "show": False  # Hide x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
             }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "nameLocation": "middle",
+            "nameGap": 35,  # Increase the gap between the y-axis label and the axis
+            "axisLabel": {
+                "show": False  # Hide y-axis labels
+            }
         },
         "series": [
             {
                 "name": column_name,
                 "type": "bar",
                 "data": frequencies,
-                "color": "pastel"
+                "color": "pastel"  # Use a color scheme appropriate for ECharts
             }
         ]
     }
@@ -181,15 +220,11 @@ def summarize_categorical(df, column_name):
     
     return summary
 
+
+
 # Function for generating an analytical summary for 'Text' columns
 def summarize_text(df, column_name):
-    summary = {
-        "Total Text Length": df[column_name].str.len().sum(),
-        "Average Text Length": df[column_name].str.len().mean(),
-        "Number of Unique Entries": df[column_name].nunique(),
-        "Most Frequent Text": df[column_name].mode()[0] if not df[column_name].mode().empty else None,
-        "Top 5 Most Frequent Texts": df[column_name].value_counts().head(5).to_dict()
-    }
+    summary = {}
     return summary
 
 # Function for generating an analytical summary for 'Identifiers (IDs)' columns
@@ -202,12 +237,7 @@ def summarize_identifiers(df, column_name):
     return summary
 
 def summarize_financial(df, column_name):
-    # Use summarize_numeric to get basic statistics
-    summary = summarize_numeric(df, column_name)
-    
-    # Add financial specific statistics
-    summary["Total Sum"] = df[column_name].sum()
-    summary["Currency Format Detected"] = any(df[column_name].astype(str).str.contains(r'[\$\€\¥]'))
+    summary = {}
     
     # Compute boxplot statistics
     data = df[column_name].dropna()
@@ -220,18 +250,35 @@ def summarize_financial(df, column_name):
     # ECharts options for the boxplot
     chart_options = {
         "title": {
-            "text": f"Boxplot of {column_name}"
+            "text": f"Boxplot of {column_name}",
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "left": 'center',
+            "top": 10  # Add some top padding
         },
         "tooltip": {
             "trigger": "item",
-            "formatter": "{a} <br/>{b} : {c}"
+            "formatter": "{a} <br/>{b}: {c}"  # Display name and value
+        },
+        "grid": {
+            "top": 60  # Add more space at the top to prevent overlap
         },
         "xAxis": {
             "type": "category",
-            "data": [column_name]
+            "data": [column_name],
+            "axisLabel": {
+                "show": False  # Hide x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
+            }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "name": column_name,
+            "nameLocation": "middle",
+            "nameGap": 35  # Increase the gap between the y-axis label and the axis
         },
         "series": [
             {
@@ -258,13 +305,10 @@ def summarize_financial(df, column_name):
     
     return summary
 
+
 def summarize_geospatial(df, column_name):
     # Summary statistics
-    summary = {
-        "Total Unique Locations": df[column_name].nunique(),
-        "Most Frequent Location": df[column_name].mode()[0] if not df[column_name].mode().empty else None,
-        "Geospatial Coverage": f"{df[column_name].min()} to {df[column_name].max()} (approximation)"
-    }
+    summary = {}
     
     # Top 5 locations
     top_locations = df[column_name].value_counts().head(5)
@@ -274,27 +318,42 @@ def summarize_geospatial(df, column_name):
     # ECharts options for the bar chart
     chart_options = {
         "title": {
-            "text": f"Top 5 Locations of {column_name}"
+            "text": f"Top 5 Locations of {column_name}",
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "left": 'center',
+            "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis"
+            "trigger": "axis",
+            "formatter": "{b}: {c} occurrences"  # Display category and count
+        },
+        "grid": {
+            "top": 60  # Add more space at the top to prevent overlap
         },
         "xAxis": {
             "type": "category",
             "data": locations,
             "axisLabel": {
-                "rotate": 45
+                "show": False  # Hide x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
             }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "name": "Frequency",
+            "nameLocation": "middle",
+            "nameGap": 35  # Increase the gap between the y-axis label and the axis
         },
         "series": [
             {
                 "name": column_name,
                 "type": "bar",
                 "data": frequencies,
-                "color": "coolwarm"
+                "color": "coolwarm"  # Use a color scheme appropriate for ECharts
             }
         ]
     }
@@ -304,29 +363,52 @@ def summarize_geospatial(df, column_name):
     
     return summary
 
+
 def summarize_boolean(df, column_name):
+    # Normalize the column to boolean
+    def normalize_to_bool(value):
+        if pd.isnull(value):
+            return False  # Consider NaN values as False
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            # Convert string representations to boolean
+            return value.strip().lower() in ['true', '1', 'yes']
+        if isinstance(value, (int, float)):
+            # Consider non-zero numbers as True
+            return bool(value)
+        return False  # Default case if none of the above match
+
+    # Apply the normalization to the column
+    df[column_name] = df[column_name].apply(normalize_to_bool)
+
     # Summary statistics
     true_count = df[column_name].sum()
-    false_count = df[column_name].count() - true_count
-    summary = {
-        "Count of True": true_count,
-        "Count of False": false_count,
-        "Percentage True": df[column_name].mean() * 100
-    }
-    
+    false_count = df[column_name].count() - true_count  # Total count minus true_count
+
+    # Debugging: Print counts
+    print(f"True count: {true_count}, False count: {false_count}")
+
+    summary = {}
+
     # ECharts options for the pie chart
     chart_options = {
         "title": {
             "text": f"Distribution of {column_name}",
-            "left": "center"
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "left": "center",
+            "top": 10  # Add some top padding
         },
         "tooltip": {
             "trigger": "item",
-            "formatter": "{a} <br/>{b}: {c} ({d}%)"
+            "formatter": "{a} <br/>{b}: {c} ({d}%)"  # Display category, count, and percentage
         },
         "legend": {
             "orient": "vertical",
-            "left": "left",
+            "left": "right",  # Move legend to the right to avoid overlap
+            "top": 'center',
             "data": ["True", "False"]
         },
         "series": [
@@ -335,11 +417,11 @@ def summarize_boolean(df, column_name):
                 "type": "pie",
                 "radius": "50%",
                 "data": [
-                    {"value": true_count, "name": "True"},
-                    {"value": false_count, "name": "False"}
+                    {"value": int(true_count), "name": "True", "itemStyle": {"color": "skyblue"}},
+                    {"value": int(false_count), "name": "False", "itemStyle": {"color": "orange"}}
                 ],
-                "itemStyle": {
-                    "emphasis": {
+                "emphasis": {  # Adjusted itemStyle format
+                    "itemStyle": {
                         "shadowBlur": 10,
                         "shadowOffsetX": 0,
                         "shadowColor": "rgba(0, 0, 0, 0.5)"
@@ -348,11 +430,12 @@ def summarize_boolean(df, column_name):
             }
         ]
     }
-    
+
     # Include ECharts options in the summary
     summary['chart_options'] = chart_options
-    
+
     return summary
+
 
 # Function for generating an analytical summary for 'Binary' columns
 def summarize_binary(df, column_name):
@@ -388,9 +471,7 @@ def summarize_special_symbols(df, column_name):
     return summary
 
 def summarize_ratings_scoring(df, column_name):
-    # Summary statistics from the numeric function
-    summary = summarize_numeric(df, column_name)
-    summary["Most Common Score"] = df[column_name].mode()[0] if not df[column_name].mode().empty else None
+    summary = {}
     
     # Compute the distribution of scores
     score_counts = df[column_name].value_counts().sort_index()
@@ -400,20 +481,34 @@ def summarize_ratings_scoring(df, column_name):
     # ECharts options for the bar chart
     chart_options = {
         "title": {
-            "text": f"Ratings/Scoring Distribution for {column_name}"
+            "text": f"Distribution for {column_name}",
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "left": 'center',
+            "top": 10  # Add some top padding
         },
         "tooltip": {
             "trigger": "axis"
+        },
+        "grid": {
+            "top": 60  # Add more space at the top to prevent overlap
         },
         "xAxis": {
             "type": "category",
             "data": scores,
             "axisLabel": {
-                "rotate": 45
+                "show": False  # Hide x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
             }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "name": "Frequency",
+            "nameLocation": "middle",
+            "nameGap": 35  # Increase the gap between the y-axis label and the axis
         },
         "series": [
             {
@@ -430,15 +525,14 @@ def summarize_ratings_scoring(df, column_name):
     
     return summary
 
+
+import pandas as pd
+import numpy as np
+
 def summarize_duration(df, column_name):
     # Convert to timedelta and compute summary statistics
     duration_series = pd.to_timedelta(df[column_name], errors='coerce')
-    summary = {
-        "Total Duration": duration_series.sum(),
-        "Average Duration": duration_series.mean(),
-        "Shortest Duration": duration_series.min(),
-        "Longest Duration": duration_series.max()
-    }
+    summary = {}
     
     # Compute histogram data
     durations_seconds = duration_series.dropna().dt.total_seconds()
@@ -448,20 +542,36 @@ def summarize_duration(df, column_name):
     # ECharts options for the histogram
     chart_options = {
         "title": {
-            "text": f"Distribution of Duration in {column_name}"
+            "text": f"Distribution of Duration in {column_name}",
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "left": 'center',
+            "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis"
+            "trigger": "axis",
+            "formatter": "{b}: {c} occurrences"  # Display bin center and count
+        },
+        "grid": {
+            "top": 60  # Add more space at the top to prevent overlap
         },
         "xAxis": {
             "type": "category",
-            "data": bin_centers.tolist(),
+            "data": [f"{round(center, 2)} s" for center in bin_centers],  # Format bin centers
             "axisLabel": {
-                "formatter": "{value} s"
+                "rotate": 45,
+                "show": True  # Show x-axis labels with rotation
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
             }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "name": "Frequency",
+            "nameLocation": "middle",
+            "nameGap": 35  # Increase the gap between the y-axis label and the axis
         },
         "series": [
             {
@@ -479,40 +589,53 @@ def summarize_duration(df, column_name):
     return summary
 
 
+
 def summarize_survey_feedback(df, column_name):
     # Compute value counts
     value_counts = df[column_name].value_counts()
-    summary = {
-        "Most Common Response": value_counts.idxmax(),
-        "Top 5 Responses": value_counts.head(5).to_dict(),
-        "Unique Responses": df[column_name].nunique()
-    }
+    summary = {}
     
     # Generate ECharts options for the top 5 responses
     top_responses = value_counts.head(5)
     chart_options = {
         "title": {
-            "text": f"Top 5 Survey/Feedback Responses for {column_name}"
+            "text": f"Top 5 Survey/Feedback Responses for {column_name}",
+            "textStyle": {
+                "fontSize": 14  # Smaller font size for the title
+            },
+            "left": 'center',
+            "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "item"
+            "trigger": "item",
+            "formatter": "{b}: {c} responses"  # Display category and count
+        },
+        "grid": {
+            "top": 60  # Add more space at the top to prevent overlap
         },
         "xAxis": {
             "type": "category",
             "data": top_responses.index.tolist(),
             "axisLabel": {
-                "rotate": 45  # Rotate labels for better readability
+                "rotate": 45,  # Rotate labels for better readability
+                "formatter": "{value}"  # Format x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
             }
         },
         "yAxis": {
-            "type": "value"
+            "type": "value",
+            "name": "Frequency",
+            "nameLocation": "middle",
+            "nameGap": 35  # Increase the gap between the y-axis label and the axis
         },
         "series": [
             {
                 "name": column_name,
                 "type": "bar",
                 "data": top_responses.values.tolist(),
-                "color": "viridis"
+                "color": "viridis"  # You may need to adjust this color depending on ECharts' color schemes
             }
         ]
     }
@@ -521,6 +644,7 @@ def summarize_survey_feedback(df, column_name):
     summary['chart_options'] = chart_options
     
     return summary
+
 
 # Function for generating an analytical summary for 'File References' columns
 def summarize_file_references(df, column_name):

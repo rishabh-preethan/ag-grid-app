@@ -106,7 +106,7 @@ def convert_to_serializable(data):
         if pd.isna(val):
             return None
         if isinstance(val, (np.integer, np.float64, np.bool_)):
-            return val.item()
+            return val.item()  # Convert numpy types to native Python types
         if isinstance(val, bytes):
             return val.decode('utf-8')  # Handle bytes (base64 images)
         return val
@@ -119,6 +119,7 @@ def convert_to_serializable(data):
     if isinstance(data, list):
         return [handle_value(item) for item in data]
     return data
+
 
 
 @app.route('/upload', methods=['POST'])

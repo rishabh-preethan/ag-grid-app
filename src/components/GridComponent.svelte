@@ -51,27 +51,54 @@
   }
 
   function cellRenderer(params) {
-    const columnName = params.colDef.field; // Get the current column name dynamically
+  const columnName = params.colDef.field;
 
-    // Check if we are on the first row and handling the column dynamically
-    if (params.node.rowIndex === 0) {
-      // Check if chart options exist for the dynamic column name
-      if (params.data && params.data[columnName] && params.data[columnName].chart_options) {
+  if (params.node.rowIndex === 0) {
+    const data = params.data && params.data[columnName];
+
+    if (data) {
+      const containerDiv = document.createElement('div');
+
+      // Render chart if chart_options is available
+      if (data.chart_options) {
         const chartDiv = document.createElement('div');
-        chartDiv.style.width = '200%';
-        chartDiv.style.height = '200px'; // Adjust height as needed
+        // Increase width and set overflow to visible
+        chartDiv.style.width = '200%'; // Increase this to ensure labels fit
+        chartDiv.style.height = '200px';
+        chartDiv.style.overflow = 'visible'; // Allow overflow for chart elements
 
         const chart = echarts.init(chartDiv);
-        chart.setOption(params.data[columnName].chart_options); // Use dynamic column name
 
-        return chartDiv;
-      } else {
-        console.error(`Chart options are not defined for column: ${columnName}`);
-        return 'No chart options'; // Return a fallback or placeholder
+        // Ensure chart has enough margin for y-axis labels
+        const chartOptions = {
+          ...data.chart_options,
+          grid: {
+            ...data.chart_options.grid,
+            left: '15%', // Adjust this to add space for y-axis labels
+            right: '10%', // Adjust right margin if necessary
+          },
+        };
+        chart.setOption(chartOptions);
+
+        containerDiv.appendChild(chartDiv);
       }
-    }
 
-    // Handle other cases
+      // Render summary if summary is available
+      if (data.summary) {
+        const summaryDiv = document.createElement('div');
+        summaryDiv.style.marginTop = '10px'; // Space between chart and summary
+        summaryDiv.innerText = data.summary;
+        containerDiv.appendChild(summaryDiv);
+      }
+
+      return containerDiv;
+    } else {
+      console.error(`No data found for column: ${columnName}`);
+      return 'No data available';
+    }
+  }
+
+    // Handle other rows as before
     if (params.data[`${params.colDef.field}_meetsCriteria`]) {
       const highlightColor = 'rgba(255, 0, 0, 0.1)';
       const span = createHighlightSpan(params.value, highlightColor);

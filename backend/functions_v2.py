@@ -51,7 +51,7 @@ def summarize_date_time(df, column_name):
     # Generate ECharts options for date distribution
     chart_options = {
         "title": {
-            "text": f"Distribution of {column_name}"
+            # "text": f"Distribution of {column_name}"
         },
         "tooltip": {
             "trigger": "axis"
@@ -110,7 +110,7 @@ def summarize_numeric(df, column_name):
     # Convert histogram data to ECharts format with meaningful labels
     chart_options = {
         "title": {
-            "text": f"Distribution of {column_name}",
+            # "text": f"Distribution of {column_name}",
             "subtext": f"Mean: {mean_value:.2f},Std Dev: {std_dev:.2f}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
@@ -173,7 +173,7 @@ def summarize_categorical(df, column_name):
     # Generate ECharts options
     chart_options = {
         "title": {
-            "text": f"Top Categories",
+            # "text": f"Top Categories",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -250,7 +250,7 @@ def summarize_financial(df, column_name):
     # ECharts options for the boxplot
     chart_options = {
         "title": {
-            "text": f"Boxplot of {column_name}",
+            # "text": f"Boxplot of {column_name}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -318,7 +318,7 @@ def summarize_geospatial(df, column_name):
     # ECharts options for the bar chart
     chart_options = {
         "title": {
-            "text": f"Top 5 Locations of {column_name}",
+            # "text": f"Top 5 Locations of {column_name}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -394,7 +394,7 @@ def summarize_boolean(df, column_name):
     # ECharts options for the pie chart
     chart_options = {
         "title": {
-            "text": f"Distribution of {column_name}",
+            # "text": f"Distribution of {column_name}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -481,7 +481,7 @@ def summarize_ratings_scoring(df, column_name):
     # ECharts options for the bar chart
     chart_options = {
         "title": {
-            "text": f"Distribution for {column_name}",
+            # "text": f"Distribution for {column_name}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -542,7 +542,7 @@ def summarize_duration(df, column_name):
     # ECharts options for the histogram
     chart_options = {
         "title": {
-            "text": f"Distribution of Duration in {column_name}",
+            # "text": f"Distribution of Duration in {column_name}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -599,7 +599,7 @@ def summarize_survey_feedback(df, column_name):
     top_responses = value_counts.head(5)
     chart_options = {
         "title": {
-            "text": f"Top 5 Survey/Feedback Responses for {column_name}",
+            # "text": f"Top 5 Survey/Feedback Responses for {column_name}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },

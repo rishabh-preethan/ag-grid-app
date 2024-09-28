@@ -9,23 +9,8 @@ import os
 from datetime import datetime
 from collections import Counter
 import numpy as np
-
-
-def save_plot(fig, column_name):
-    """Save a matplotlib figure to the images directory and return the file path."""
-    # Ensure the images directory exists
-    os.makedirs('images', exist_ok=True)
-    
-    # Generate a unique filename using the current date and time
-    filename = f"{column_name}_plot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-    filepath = os.path.join('images', filename)
-    
-    # Save the figure
-    fig.savefig(filepath, format='png', bbox_inches='tight')
-    
-    return filepath
-
 from dateutil import parser
+
 
 def summarize_date_time(df, column_name):
     # Attempt to parse dates using dateutil.parser
@@ -54,7 +39,9 @@ def summarize_date_time(df, column_name):
             # "text": f"Distribution of {column_name}"
         },
         "tooltip": {
-            "trigger": "axis"
+            "trigger": "item",
+            "formatter": "{b}: {c}",  # Display category, count, and percentage
+            "position": 'top'  # Position tooltip above the mouse pointer
         },
         "xAxis": {
             "type": "category",
@@ -110,8 +97,7 @@ def summarize_numeric(df, column_name):
     # Convert histogram data to ECharts format with meaningful labels
     chart_options = {
         "title": {
-            # "text": f"Distribution of {column_name}",
-            "subtext": f"Mean: {mean_value:.2f},Std Dev: {std_dev:.2f}",
+            "subtext": f"Mean: {mean_value:.2f}, Median: {median_value:.2f}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -122,8 +108,9 @@ def summarize_numeric(df, column_name):
             "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis",
-            "formatter": "{b}: {c}"  # Display bin center and count
+            "trigger": "item",
+            "formatter": "{b}: {c}",  # Display category, count, and percentage
+            "position": 'top'  # Position tooltip above the mouse pointer
         },
         "grid": {
             "top": 60  # Add more space at the top to prevent overlap
@@ -141,14 +128,20 @@ def summarize_numeric(df, column_name):
         "yAxis": {
             "type": "value",
             "nameLocation": "middle",
-            "nameGap": 35  # Increase the gap between the y-axis label and the axis
+            "nameGap": 35,  # Increase the gap between the y-axis label and the axis
+            "axisLabel": {
+                "show": False  # Hide y-axis labels
+            },
+            "splitLine": {
+                "show": False  # Hide y-axis grid lines
+            }
         },
         "series": [
             {
                 "name": column_name,
                 "type": "bar",
                 "data": counts.tolist(),
-                "color": "lightgreen"
+                "color": "#5570c6"
             }
         ]
     }
@@ -157,6 +150,7 @@ def summarize_numeric(df, column_name):
     summary['chart_options'] = chart_options
 
     return summary
+
 
 def summarize_categorical(df, column_name):
     # Get the value counts
@@ -181,8 +175,9 @@ def summarize_categorical(df, column_name):
             "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis",
-            "formatter": "{b}: {c} occurrences"  # Display category and count
+            "trigger": "item",
+            "formatter": "{b}: {c}",  # Display category, count, and percentage
+            "position": 'top'  # Position tooltip above the mouse pointer
         },
         "grid": {
             "top": 60  # Add more space at the top to prevent overlap
@@ -210,7 +205,7 @@ def summarize_categorical(df, column_name):
                 "name": column_name,
                 "type": "bar",
                 "data": frequencies,
-                "color": "pastel"  # Use a color scheme appropriate for ECharts
+                "color": "#d81159"  # Use a color scheme appropriate for ECharts
             }
         ]
     }
@@ -259,7 +254,8 @@ def summarize_financial(df, column_name):
         },
         "tooltip": {
             "trigger": "item",
-            "formatter": "{a} <br/>{b}: {c}"  # Display name and value
+            "formatter": "{b}: {c}",  # Display category, count, and percentage
+            "position": 'top'  # Position tooltip above the mouse pointer
         },
         "grid": {
             "top": 60  # Add more space at the top to prevent overlap
@@ -326,8 +322,9 @@ def summarize_geospatial(df, column_name):
             "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis",
-            "formatter": "{b}: {c} occurrences"  # Display category and count
+            "trigger": "item",
+            "formatter": "{b}: {c}",  # Display category, count, and percentage
+            "position": 'top'  # Position tooltip above the mouse pointer
         },
         "grid": {
             "top": 60  # Add more space at the top to prevent overlap
@@ -353,7 +350,7 @@ def summarize_geospatial(df, column_name):
                 "name": column_name,
                 "type": "bar",
                 "data": frequencies,
-                "color": "coolwarm"  # Use a color scheme appropriate for ECharts
+                "color": "#118ab2"  # Use a color scheme appropriate for ECharts
             }
         ]
     }
@@ -386,15 +383,11 @@ def summarize_boolean(df, column_name):
     true_count = df[column_name].sum()
     false_count = df[column_name].count() - true_count  # Total count minus true_count
 
-    # Debugging: Print counts
-    print(f"True count: {true_count}, False count: {false_count}")
-
     summary = {}
 
     # ECharts options for the pie chart
     chart_options = {
         "title": {
-            # "text": f"Distribution of {column_name}",
             "textStyle": {
                 "fontSize": 14  # Smaller font size for the title
             },
@@ -403,13 +396,11 @@ def summarize_boolean(df, column_name):
         },
         "tooltip": {
             "trigger": "item",
-            "formatter": "{a} <br/>{b}: {c} ({d}%)"  # Display category, count, and percentage
+            "formatter": "{b}: {c} ({d}%)",  # Display category, count, and percentage
+            "position": 'top'  # Position tooltip above the mouse pointer
         },
         "legend": {
-            "orient": "vertical",
-            "left": "right",  # Move legend to the right to avoid overlap
-            "top": 'center',
-            "data": ["True", "False"]
+            "show": False,  # Hide the legend
         },
         "series": [
             {
@@ -417,9 +408,12 @@ def summarize_boolean(df, column_name):
                 "type": "pie",
                 "radius": "50%",
                 "data": [
-                    {"value": int(true_count), "name": "True", "itemStyle": {"color": "skyblue"}},
-                    {"value": int(false_count), "name": "False", "itemStyle": {"color": "orange"}}
+                    {"value": int(true_count), "name": "True", "itemStyle": {"color": "#0496ff"}},
+                    {"value": int(false_count), "name": "False", "itemStyle": {"color": "#ffbc42"}}
                 ],
+                "label": {
+                    "show": False  # Hide labels on the pie slices
+                },
                 "emphasis": {  # Adjusted itemStyle format
                     "itemStyle": {
                         "shadowBlur": 10,
@@ -435,6 +429,7 @@ def summarize_boolean(df, column_name):
     summary['chart_options'] = chart_options
 
     return summary
+
 
 
 # Function for generating an analytical summary for 'Binary' columns
@@ -489,7 +484,9 @@ def summarize_ratings_scoring(df, column_name):
             "top": 10  # Add some top padding
         },
         "tooltip": {
-            "trigger": "axis"
+            "trigger": "item",
+            "formatter": "{b}: {c}",  # Display category, count, and percentage
+            "position": 'top'  # Position tooltip above the mouse pointer
         },
         "grid": {
             "top": 60  # Add more space at the top to prevent overlap
@@ -508,14 +505,20 @@ def summarize_ratings_scoring(df, column_name):
             "type": "value",
             "name": "Frequency",
             "nameLocation": "middle",
-            "nameGap": 35  # Increase the gap between the y-axis label and the axis
+            "nameGap": 35,  # Increase the gap between the y-axis label and the axis
+            "axisLabel": {
+                "show": False  # Hide x-axis labels
+            },
+            "axisTick": {
+                "show": False  # Hide x-axis ticks
+            }
         },
         "series": [
             {
                 "name": column_name,
                 "type": "bar",
                 "data": counts,
-                "color": "magma"
+                "color": "#d81159"
             }
         ]
     }
@@ -578,7 +581,7 @@ def summarize_duration(df, column_name):
                 "name": column_name,
                 "type": "bar",
                 "data": hist.tolist(),
-                "color": "darkblue"
+                "color": "#d81159"
             }
         ]
     }
@@ -635,7 +638,7 @@ def summarize_survey_feedback(df, column_name):
                 "name": column_name,
                 "type": "bar",
                 "data": top_responses.values.tolist(),
-                "color": "viridis"  # You may need to adjust this color depending on ECharts' color schemes
+                "color": "#d81159"  # You may need to adjust this color depending on ECharts' color schemes
             }
         ]
     }
